@@ -84,28 +84,40 @@ load_level :: proc() -> Level {
     return level
 }
 
+interact_with :: proc(item: ^Interactable) {
+    switch &v in item.state {
+    case Door:
+        if v.state == DoorState.OPEN {
+            v.state = DoorState.CLOSING1
+            v.state_change_time = rl.GetTime() + 0.2
+            b2.Body_Enable(item.body)
+        } else if v.state == DoorState.CLOSED {
+            v.state = DoorState.OPENING1
+            v.state_change_time = rl.GetTime() + 0.2
+        }
+    }
+}
+
 level_interact :: proc(level: ^Level, pos: [2]f32) {
     max_range: f32 = 1.5
+
+    closest: ^Interactable = nil
+    min_dist: f32 = 1000000000
 
     for &i in level.iteractables {
         bpos := b2.Body_GetPosition(i.body)
 
-        if b2.Distance(pos, bpos) > max_range {
+        dist := b2.Distance(pos, bpos)
+        if dist > max_range {
             continue
         }
-        switch &v in i.state {
-        case Door:
-            if v.state == DoorState.OPEN {
-                v.state = DoorState.CLOSING1
-                v.state_change_time = rl.GetTime() + 0.2
-                b2.Body_Enable(i.body)
-            } else if v.state == DoorState.CLOSED {
-                v.state = DoorState.OPENING1
-                v.state_change_time = rl.GetTime() + 0.2
-            }
+        if dist < min_dist {
+            closest = &i
+            min_dist = dist
         }
-
-        return
+    }
+    if closest != nil {
+        interact_with(closest)
     }
 }
 
