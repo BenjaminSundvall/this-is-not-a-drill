@@ -4,6 +4,7 @@ import rl "vendor:raylib"
 import la "core:math/linalg"
 import "core:fmt"
 import "core:math"
+import "core:sort"
 import "core:strings"
 
 gs: GameState
@@ -32,9 +33,21 @@ handle_input :: proc() -> [2]f32 {
     return input
 }
 
+render_el_cmd :: proc(a, b: RenderElement) -> int {
+    if a.z == b.z {
+        return 0
+    }
+    return a.z < b.z ? -1 : 1
+}
+
 draw_cam :: proc() {
-    rl.DrawTextureV(gs.level.texture, {0, 0}, rl.WHITE)
-    rl.DrawTextureV(gs.player.texture, gs.player.pos, rl.WHITE)
+    sort.quick_sort_proc(gs.render_queue[:], render_el_cmd)
+
+    for el in gs.render_queue {
+        rl.DrawTexturePro(el.texture^, el.src, el.dest, 
+                          {0, 0}, 0, rl.WHITE)
+    }
+    //rl.DrawTextureV(gs.player.texture, gs.player.pos, rl.WHITE)
 }
 
 draw_ui :: proc() {
@@ -63,6 +76,22 @@ draw_game :: proc() {
     rl.BeginDrawing()
     rl.ClearBackground({160, 200, 255, 255})
 
+    resize(&gs.render_queue, 0)
+    level_refresh(&gs.level)
+
+    el: RenderElement = {
+        &gs.player.texture,
+        {0, 0, f32(gs.player.texture.width), f32(gs.player.texture.height)},
+        {gs.player.pos.x - 0.5,
+         gs.player.pos.y - 1.0,
+         1.0, 2.0,
+        },
+        gs.player.pos.y,
+        u32(len(gs.render_queue)),
+    }
+    append(&gs.render_queue, el)
+
+
     // Camera
     rl.BeginMode2D(gs.camera)
     draw_cam()
@@ -82,28 +111,26 @@ game_over :: proc() {
 main :: proc() {
     rl.InitWindow(1280, 720, "This is not a drill!")
 
+    rl.SetTargetFPS(rl.GetMonitorRefreshRate(rl.GetCurrentMonitor()))
     gs.game_over = false
 
     gs.player = {
         pos = {0, 0},
         texture = rl.LoadTexture("resources/player.png"),
-        speed = 200,
+        speed = 10,
     }
 
-    gs.level = {
-        texture = rl.LoadTexture("resources/dummy_level.png"),
-    }
-
+    gs.level = load_level() 
     gs.camera = {
-        zoom = 4,
+        zoom = TILE_SCALE * 4,
         offset = {f32(rl.GetScreenWidth()/2), f32(rl.GetScreenHeight()/2)},
-        target = gs.player.pos
+        target = gs.player.pos,
     }
 
     gs.time_limit = 120
 
     gs.cam_boundary_tl = {0, 0}
-    gs.cam_boundary_br = {128, 128}
+    gs.cam_boundary_br = {256, 256}
 
     gs.font = rl.LoadFont("resources/marker.ttf")
     gs.notepad_texture = rl.LoadTexture("resources/notepad.png")

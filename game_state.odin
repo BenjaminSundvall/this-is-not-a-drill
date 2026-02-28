@@ -2,6 +2,14 @@ package main
 
 import rl "vendor:raylib"
 
+RenderElement :: struct {
+    texture: ^rl.Texture2D,
+    src: rl.Rectangle,
+    dest: rl.Rectangle,
+    z: f32,
+    ix: u32,
+}
+
 GameState :: struct {
     // Game
     game_over: bool,
@@ -15,6 +23,7 @@ GameState :: struct {
     tasks: [dynamic]Task,
 
     // UI
+    render_queue: [dynamic]RenderElement,
     font: rl.Font,
     notepad_texture: rl.Texture2D,
     checkbox_empty_texture: rl.Texture2D,
