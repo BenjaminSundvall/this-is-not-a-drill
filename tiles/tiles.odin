@@ -1,4 +1,4 @@
-package main
+package mapeditor
 
 import "core:fmt"
 import "base:intrinsics"
@@ -21,7 +21,7 @@ tile_rect :: proc(ix: u32) -> rl.Rectangle {
 
 main :: proc() {
     rl.InitWindow(1280, 720, "this is not a drill")
-    tiles := rl.LoadTexture("tilemap.png")
+    tiles := rl.LoadTexture("resources/tilemap.png")
     rl.SetTextureFilter(tiles, rl.TextureFilter.POINT)
 
 
