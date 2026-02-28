@@ -12,12 +12,15 @@ RenderElement :: struct {
 
 GameState :: struct {
     // Game
+    game_over: bool,
     player: Player,
     level: Level,
     camera: rl.Camera2D,
-
-    // UI
-    notepad: UIElem,
+    time_limit: f64,
+    time_left: f64,
+    cam_boundary_tl: [2]f32,
+    cam_boundary_br: [2]f32,
 
     render_queue: [dynamic]RenderElement,
+    notepad_texture: rl.Texture2D,
 }

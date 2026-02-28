@@ -5,6 +5,7 @@ import la "core:math/linalg"
 import "core:fmt"
 import "core:math"
 import "core:sort"
+import "core:strings"
 
 gs: GameState
 
@@ -45,7 +46,14 @@ draw_cam :: proc() {
 }
 
 draw_ui :: proc() {
-    rl.DrawTextureV(gs.notepad.texture, gs.notepad.pos, rl.WHITE)
+    // Draw tasks
+    rl.DrawTextureV(gs.notepad_texture, {0, 0}, rl.WHITE)
+
+    // Draw clock
+    clock_font_size: i32 = 64
+    clock_string: cstring = strings.clone_to_cstring(fmt.tprintf("%2d:%2d", u32(gs.time_left) / 60, u32(gs.time_left) % 60))
+    clock_width := rl.MeasureText(clock_string, clock_font_size)
+    rl.DrawText(clock_string, (rl.GetScreenWidth() - clock_width)/2, 0, clock_font_size, rl.RED)
 }
 
 draw_game :: proc() {
@@ -79,10 +87,16 @@ draw_game :: proc() {
     rl.EndDrawing()
 }
 
+game_over :: proc() {
+    gs.game_over = true
+    fmt.println("Game over!")
+}
+
 main :: proc() {
     rl.InitWindow(1280, 720, "This is not a drill!")
 
     rl.SetTargetFPS(rl.GetMonitorRefreshRate(rl.GetCurrentMonitor()))
+    gs.game_over = false
 
     gs.player = {
         pos = {0, 0},
@@ -97,17 +111,26 @@ main :: proc() {
         target = gs.player.pos,
     }
 
-    gs.notepad = {
-        pos = {0, 0},
-        texture = rl.LoadTexture("resources/notepad.png"),
-    }
+    gs.time_limit = 120
+
+    gs.cam_boundary_tl = {0, 0}
+    gs.cam_boundary_br = {256, 256}
+
+    gs.notepad_texture = rl.LoadTexture("resources/notepad.png")
 
     for !rl.WindowShouldClose() {
-        input := handle_input()
+        if !gs.game_over {
+            input := handle_input()
 
-        gs.player.pos += gs.player.speed * la.normalize0(input) * rl.GetFrameTime()
-        gs.camera.target.x = math.clamp(gs.player.pos.x, 0, 256) // TODO: Clamp to available map area
-        gs.camera.target.y = math.clamp(gs.player.pos.y, 0, 256) // TODO: Clamp to available map area
+            // Update game state
+            gs.time_left = gs.time_limit - rl.GetTime()
+            if gs.time_left <= 0 {
+                game_over()
+            }
+            gs.player.pos += gs.player.speed * la.normalize0(input) * rl.GetFrameTime()
+            gs.camera.target.x = math.clamp(gs.player.pos.x, gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
+            gs.camera.target.y = math.clamp(gs.player.pos.y, gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+        }
 
         draw_game()
     }
