@@ -212,6 +212,8 @@ main :: proc() {
 
             b2.World_Step(world, 1.0 / 60.0, 4)
 
+
+            level_tick(&gs.level)
             // Update game state
             gs.time_left = gs.time_limit - rl.GetTime()
             if gs.time_left <= 0 {
@@ -222,6 +224,10 @@ main :: proc() {
                 gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
             gs.camera.target.y = math.clamp(pos.y, 
                 gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+                
+            if rl.IsKeyPressed(.SPACE) {
+                level_interact(&gs.level, pos)
+            }
         }
 
         draw_game()
