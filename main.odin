@@ -8,6 +8,11 @@ import "core:strings"
 
 gs: GameState
 
+TASK_FONT_SIZE :: 16
+TASK_SPACING :: 32
+
+CLOCK_FONT_SIZE :: 64
+
 handle_input :: proc() -> [2]f32 {
     input: [2]f32
 
@@ -34,13 +39,24 @@ draw_cam :: proc() {
 
 draw_ui :: proc() {
     // Draw tasks
-    rl.DrawTextureV(gs.notepad_texture, {0, 0}, rl.WHITE)
+    notepad_pos: [2]f32 = {8, 8}    // TODO: Move to right side
+    rl.DrawTextureV(gs.notepad_texture, notepad_pos, rl.WHITE)
+    task_pos := notepad_pos + {0, 32}
+    for task in gs.tasks {
+        if task.completed {
+            rl.DrawTextureV(gs.checkbox_ok_texture, task_pos, rl.WHITE)
+        } else {
+            rl.DrawTextureV(gs.checkbox_empty_texture, task_pos, rl.WHITE)
+        }
+        rl.DrawTextEx(gs.font, task.description, task_pos + {32, (TASK_SPACING - TASK_FONT_SIZE) / 2}, TASK_FONT_SIZE, 1, rl.BLACK) // TODO: Font
+        task_pos.y += TASK_SPACING
+    }
 
     // Draw clock
-    clock_font_size: i32 = 64
     clock_string: cstring = strings.clone_to_cstring(fmt.tprintf("%2d:%2d", u32(gs.time_left) / 60, u32(gs.time_left) % 60))
-    clock_width := rl.MeasureText(clock_string, clock_font_size)
-    rl.DrawText(clock_string, (rl.GetScreenWidth() - clock_width)/2, 0, clock_font_size, rl.RED)
+    clock_size: [2]f32 = rl.MeasureTextEx(gs.font, clock_string, CLOCK_FONT_SIZE, 1)
+    clock_pos: [2]f32 = {(f32(rl.GetScreenWidth()) - clock_size.x)/2, 0}
+    rl.DrawTextEx(gs.font, clock_string, clock_pos, CLOCK_FONT_SIZE, 1, rl.RED)
 }
 
 draw_game :: proc() {
@@ -89,7 +105,13 @@ main :: proc() {
     gs.cam_boundary_tl = {0, 0}
     gs.cam_boundary_br = {128, 128}
 
+    gs.font = rl.LoadFont("resources/marker.ttf")
     gs.notepad_texture = rl.LoadTexture("resources/notepad.png")
+    gs.checkbox_empty_texture = rl.LoadTexture("resources/checkbox_empty.png")
+    gs.checkbox_ok_texture = rl.LoadTexture("resources/checkbox_ok.png")
+
+    append(&gs.tasks, Task{description="Save the scientists (3/3)", completed=true})
+    append(&gs.tasks, Task{description="Get out!"})
 
     for !rl.WindowShouldClose() {
         if !gs.game_over {
