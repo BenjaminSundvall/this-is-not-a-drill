@@ -24,6 +24,7 @@ GameState :: struct {
     cam_boundary_tl: [2]f32,
     cam_boundary_br: [2]f32,
     tasks: [dynamic]Task,
+    scientist: Scientist,
 
     // UI
     render_queue: [dynamic]RenderElement,

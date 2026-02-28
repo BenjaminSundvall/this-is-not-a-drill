@@ -43,6 +43,21 @@ render_el_cmd :: proc(a, b: RenderElement) -> int {
     return a.z < b.z ? -1 : 1
 }
 
+
+draw_path :: proc(scientist: Scientist) {
+    for i in 0..<(len(scientist.path)-1) {
+        from := scientist.path[i]
+        to := scientist.path[i+1]
+        rl.DrawLineV(from, to, rl.RED)
+    }
+
+
+    for i in 0..<(len(scientist.path)) {
+        tgt_pos := scientist.path[scientist.path_progress]
+        rl.DrawCircleV(scientist.path[i], i == scientist.path_progress ? 0.15 : 0.05, rl.BLUE)
+    }
+}
+
 draw_cam :: proc() {
     sort.quick_sort_proc(gs.render_queue[:], render_el_cmd)
 
@@ -50,6 +65,8 @@ draw_cam :: proc() {
         rl.DrawTexturePro(el.texture^, el.src, el.dest,
                           {0, 0}, 0, rl.WHITE)
     }
+
+    draw_path(gs.scientist)
     //rl.DrawTextureV(gs.player.texture, gs.player.pos, rl.WHITE)
 }
 
@@ -87,6 +104,20 @@ draw_game :: proc() {
     el: RenderElement = {
         &gs.player.texture,
         {0, 0, f32(gs.player.texture.width), f32(gs.player.texture.height)},
+        {pos.x - 0.5,
+         pos.y - 1.5,
+         1.0, 2.0,
+        },
+        pos.y - 0.65,
+        u32(len(gs.render_queue)),
+    }
+    append(&gs.render_queue, el)
+
+    // Test scientist
+    pos = b2.Body_GetPosition(gs.scientist.id)
+    el = {
+        &gs.scientist.texture,
+        {0, 0, f32(gs.scientist.texture.width), f32(gs.scientist.texture.height)},
         {pos.x - 0.5,
          pos.y - 1.5,
          1.0, 2.0,
@@ -159,7 +190,7 @@ main :: proc() {
                 min_x + t.p.x, min_y + t.p.y,
                 max_x - min_x, max_y - min_y,
             }, rl.RED)
-        } 
+        }
     }
     dbg.DrawSolidCircleFcn = proc "c" (t: b2.Transform, rad: f32, color: b2.HexColor, ctx: rawptr) {
         context = runtime.default_context()
@@ -198,6 +229,28 @@ main :: proc() {
 
     append(&gs.tasks, Task{description="Save the scientists (3/3)", completed=true})
     append(&gs.tasks, Task{description="Get out!"})
+    defer delete(gs.tasks)
+
+    // Test scientist
+    body = b2.DefaultBodyDef()
+    body.type = b2.BodyType.dynamicBody
+    body.position = {0, 0}
+    body.linearDamping = 20.0
+
+    body_id = b2.CreateBody(world, body)
+    shape_def = b2.DefaultShapeDef()
+    shape_def.density = 8.0
+    shape = b2.CreateCircleShape(body_id, shape_def, {{0.0, 0.0}, 0.45})
+
+    gs.scientist = {
+        id = body_id,
+        texture = rl.LoadTexture("resources/player.png"),
+        speed = 5,
+    }
+    append(&gs.scientist.path, b2.Body_GetPosition(gs.scientist.id))
+    append(&gs.scientist.path, [2]f32{4, -2})
+    append(&gs.scientist.path, [2]f32{4, 6})
+    defer delete(gs.scientist.path)
 
     for !rl.WindowShouldClose() {
         if !gs.game_over {
@@ -207,8 +260,10 @@ main :: proc() {
             // Input
             input := handle_input()
             input = b2.Normalize(input)
-            b2.Body_ApplyForceToCenter(gs.player.id, input * 800.0, 
+            b2.Body_ApplyForceToCenter(gs.player.id, input * 800.0,
                                        true)
+
+            follow_path(&gs.scientist)
 
             b2.World_Step(world, 1.0 / 60.0, 4)
 
@@ -218,9 +273,9 @@ main :: proc() {
                 game_over()
             }
             pos := b2.Body_GetPosition(gs.player.id)
-            gs.camera.target.x = math.clamp(pos.x, 
+            gs.camera.target.x = math.clamp(pos.x,
                 gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
-            gs.camera.target.y = math.clamp(pos.y, 
+            gs.camera.target.y = math.clamp(pos.y,
                 gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
         }
 
