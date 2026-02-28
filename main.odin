@@ -33,6 +33,13 @@ handle_input :: proc() -> [2]f32 {
         input.x += 1
     }
 
+    if input.x < 0 {
+        gs.player.direction = 1
+    }
+    else if input.x > 0 {
+        gs.player.direction = -1
+    }
+
     return input
 }
 
@@ -103,7 +110,7 @@ draw_game :: proc() {
 
     el: RenderElement = {
         &gs.player.texture,
-        {0, 0, f32(gs.player.texture.width), f32(gs.player.texture.height)},
+        {0, 0, f32(gs.player.direction*gs.player.texture.width), f32(gs.player.texture.height)},
         {pos.x - 0.5,
          pos.y - 1.5,
          1.0, 2.0,
@@ -199,15 +206,15 @@ main :: proc() {
     dbg.drawShapes = false
     gs.dbg_draw = dbg
 
-
     rl.SetTargetFPS(rl.GetMonitorRefreshRate(rl.GetCurrentMonitor()))
     gs.game_over = false
     gs.world = world
 
     gs.player = {
         id = body_id,
-        texture = rl.LoadTexture("resources/player.png"),
+        texture = rl.LoadTexture("resources/security_guard.png"),
         speed = 10,
+        direction = -1,
     }
 
     gs.level = load_level()
@@ -244,7 +251,7 @@ main :: proc() {
 
     gs.scientist = {
         id = body_id,
-        texture = rl.LoadTexture("resources/player.png"),
+        texture = rl.LoadTexture("resources/scientist.png"),
         speed = 5,
     }
     append(&gs.scientist.path, b2.Body_GetPosition(gs.scientist.id))
