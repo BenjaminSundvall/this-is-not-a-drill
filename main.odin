@@ -4,6 +4,7 @@ import rl "vendor:raylib"
 import la "core:math/linalg"
 import "core:fmt"
 import "core:math"
+import "core:strings"
 
 gs: GameState
 
@@ -32,7 +33,14 @@ draw_cam :: proc() {
 }
 
 draw_ui :: proc() {
-    rl.DrawTextureV(gs.notepad.texture, gs.notepad.pos, rl.WHITE)
+    // Draw tasks
+    rl.DrawTextureV(gs.notepad_texture, {0, 0}, rl.WHITE)
+
+    // Draw clock
+    clock_font_size: i32 = 64
+    clock_string: cstring = strings.clone_to_cstring(fmt.tprintf("%2d:%2d", u32(gs.time) / 60, u32(gs.time) % 60))
+    clock_width := rl.MeasureText(clock_string, clock_font_size)
+    rl.DrawText(clock_string, (rl.GetScreenWidth() - clock_width)/2, 0, clock_font_size, rl.RED)
 }
 
 draw_game :: proc() {
@@ -69,17 +77,19 @@ main :: proc() {
         target = gs.player.pos
     }
 
-    gs.notepad = {
-        pos = {0, 0},
-        texture = rl.LoadTexture("resources/notepad.png")
-    }
+    gs.cam_boundary_tl = {0, 0}
+    gs.cam_boundary_br = {128, 128}
+
+    gs.notepad_texture = rl.LoadTexture("resources/notepad.png")
 
     for !rl.WindowShouldClose() {
         input := handle_input()
 
+        // Update game state
         gs.player.pos += gs.player.speed * la.normalize0(input) * rl.GetFrameTime()
-        gs.camera.target.x = math.clamp(gs.player.pos.x, 0, 128) // TODO: Clamp to available map area
-        gs.camera.target.y = math.clamp(gs.player.pos.y, 0, 128) // TODO: Clamp to available map area
+        gs.camera.target.x = math.clamp(gs.player.pos.x, gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
+        gs.camera.target.y = math.clamp(gs.player.pos.y, gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+        gs.time = rl.GetTime()
 
         draw_game()
     }
