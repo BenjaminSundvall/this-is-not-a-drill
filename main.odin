@@ -44,7 +44,7 @@ draw_cam :: proc() {
     sort.quick_sort_proc(gs.render_queue[:], render_el_cmd)
 
     for el in gs.render_queue {
-        rl.DrawTexturePro(el.texture^, el.src, el.dest, 
+        rl.DrawTexturePro(el.texture^, el.src, el.dest,
                           {0, 0}, 0, rl.WHITE)
     }
     //rl.DrawTextureV(gs.player.texture, gs.player.pos, rl.WHITE)
@@ -109,7 +109,13 @@ game_over :: proc() {
 }
 
 main :: proc() {
+    // Init
     rl.InitWindow(1280, 720, "This is not a drill!")
+    rl.InitAudioDevice()
+
+    music: rl.Music = rl.LoadMusicStream("resources/alarm2.mp3")
+    music.looping = true
+    rl.PlayMusicStream(music)
 
     rl.SetTargetFPS(rl.GetMonitorRefreshRate(rl.GetCurrentMonitor()))
     gs.game_over = false
@@ -120,7 +126,7 @@ main :: proc() {
         speed = 10,
     }
 
-    gs.level = load_level() 
+    gs.level = load_level()
     gs.camera = {
         zoom = TILE_SCALE * 4,
         offset = {f32(rl.GetScreenWidth()/2), f32(rl.GetScreenHeight()/2)},
@@ -142,6 +148,10 @@ main :: proc() {
 
     for !rl.WindowShouldClose() {
         if !gs.game_over {
+            // Audio
+            rl.UpdateMusicStream(music)
+
+            // Input
             input := handle_input()
 
             // Update game state
@@ -157,5 +167,7 @@ main :: proc() {
         draw_game()
     }
 
+    // Deinit
+    rl.CloseAudioDevice()
     rl.CloseWindow()
 }
