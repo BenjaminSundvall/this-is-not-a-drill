@@ -1,11 +1,14 @@
 package main
 
+import "base:runtime"
 import rl "vendor:raylib"
+import b2 "vendor:box2d"
 import la "core:math/linalg"
 import "core:fmt"
 import "core:math"
 import "core:sort"
 import "core:strings"
+import "core:c"
 
 gs: GameState
 
@@ -61,24 +64,26 @@ draw_game :: proc() {
     rl.ClearBackground({160, 200, 255, 255})
 
     resize(&gs.render_queue, 0)
-    level_refresh(&gs.level)
+    level_draw(&gs.level)
+
+    pos := b2.Body_GetPosition(gs.player.id)
 
     el: RenderElement = {
         &gs.player.texture,
         {0, 0, f32(gs.player.texture.width), f32(gs.player.texture.height)},
-        {gs.player.pos.x - 0.5,
-         gs.player.pos.y - 1.0,
+        {pos.x - 0.5,
+         pos.y - 1.5,
          1.0, 2.0,
         },
-        gs.player.pos.y,
+        pos.y - 0.65,
         u32(len(gs.render_queue)),
     }
     append(&gs.render_queue, el)
 
-
     // Camera
     rl.BeginMode2D(gs.camera)
     draw_cam()
+    b2.World_Draw(gs.world, &gs.dbg_draw)
     rl.EndMode2D()
 
     // UI elements
@@ -95,11 +100,59 @@ game_over :: proc() {
 main :: proc() {
     rl.InitWindow(1280, 720, "This is not a drill!")
 
+    wd := b2.DefaultWorldDef()
+    wd.gravity = {0, 0}
+    world := b2.CreateWorld(wd)
+
+    body := b2.DefaultBodyDef()
+    body.type = b2.BodyType.dynamicBody
+    body.position = {0, 0}
+    body.linearDamping = 20.0
+
+    body_id := b2.CreateBody(world, body)
+    shape_def := b2.DefaultShapeDef()
+    shape_def.density = 8.0
+    shape := b2.CreateCircleShape(body_id, shape_def, {{0.0, 0.0}, 0.45})
+
+    dbg := b2.DefaultDebugDraw()
+    dbg.DrawSolidPolygonFcn = proc "c" (t: b2.Transform, vert: [^]b2.Vec2, count: c.int, radius: f32,
+                                   color: b2.HexColor, ctx: rawptr) {
+        context = runtime.default_context()
+
+        if count != 4 {
+            fmt.printfln("Bad size")
+            return
+        } else {
+            min_x: f32 = 10000
+            max_x: f32 = 0
+            min_y: f32 = 10000
+            max_y: f32 = 0
+            for ix in 0..<4 {
+                min_x = min(min_x, vert[ix].x)
+                max_x = max(max_x, vert[ix].x)
+                min_y = min(min_y, vert[ix].y)
+                max_y = max(max_y, vert[ix].y)
+            }
+            rl.DrawRectangleRec({
+                min_x + t.p.x, min_y + t.p.y,
+                max_x - min_x, max_y - min_y,
+            }, rl.RED)
+        } 
+    }
+    dbg.DrawSolidCircleFcn = proc "c" (t: b2.Transform, rad: f32, color: b2.HexColor, ctx: rawptr) {
+        context = runtime.default_context()
+        rl.DrawCircleV({t.p.x, t.p.y}, rad, rl.WHITE)
+    }
+    dbg.drawShapes = false
+    gs.dbg_draw = dbg
+
+
     rl.SetTargetFPS(rl.GetMonitorRefreshRate(rl.GetCurrentMonitor()))
     gs.game_over = false
+    gs.world = world
 
     gs.player = {
-        pos = {0, 0},
+        id = body_id,
         texture = rl.LoadTexture("resources/player.png"),
         speed = 10,
     }
@@ -108,7 +161,7 @@ main :: proc() {
     gs.camera = {
         zoom = TILE_SCALE * 4,
         offset = {f32(rl.GetScreenWidth()/2), f32(rl.GetScreenHeight()/2)},
-        target = gs.player.pos,
+        target = b2.Body_GetPosition(gs.player.id),
     }
 
     gs.time_limit = 120
@@ -121,15 +174,22 @@ main :: proc() {
     for !rl.WindowShouldClose() {
         if !gs.game_over {
             input := handle_input()
+            input = b2.Normalize(input)
+            b2.Body_ApplyForceToCenter(gs.player.id, input * 800.0, 
+                                       true)
+
+            b2.World_Step(world, 1.0 / 60.0, 4)
 
             // Update game state
             gs.time_left = gs.time_limit - rl.GetTime()
             if gs.time_left <= 0 {
                 game_over()
             }
-            gs.player.pos += gs.player.speed * la.normalize0(input) * rl.GetFrameTime()
-            gs.camera.target.x = math.clamp(gs.player.pos.x, gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
-            gs.camera.target.y = math.clamp(gs.player.pos.y, gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+            pos := b2.Body_GetPosition(gs.player.id)
+            gs.camera.target.x = math.clamp(pos.x, 
+                gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
+            gs.camera.target.y = math.clamp(pos.y, 
+                gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
         }
 
         draw_game()

@@ -1,6 +1,7 @@
 package main
 
 import rl "vendor:raylib"
+import b2 "vendor:box2d"
 import "base:intrinsics"
 
 WORLD_WIDTH :: 128
@@ -58,6 +59,28 @@ level_refresh :: proc(level: ^Level) {
     for x in i32(0) ..< i32(WORLD_WIDTH) {
         for y in i32(0) ..< i32(WORLD_HEIGHT) {
             tile := level.grid[x][y]
+            if tile != Tile.WALL1 && tile != Tile.WALL2 {
+                continue
+            }
+            body_def := b2.DefaultBodyDef()
+            body_def.type = b2.BodyType.staticBody
+            body_def.position = {f32(x * TILE_SIZE) + TILE_SIZE / 2.0,
+                                 TILE_SIZE + TILE_SIZE / 2.0 + f32(y * TILE_SIZE)}
+
+            body := b2.CreateBody(gs.world, body_def)
+
+            shape_def := b2.DefaultShapeDef()
+            box := b2.MakeSquare(TILE_SIZE / 2.0)
+            shape := b2.CreatePolygonShape(body, shape_def, box)
+        }
+    }
+
+}
+
+level_draw :: proc(level: ^Level) {
+    for x in i32(0) ..< i32(WORLD_WIDTH) {
+        for y in i32(0) ..< i32(WORLD_HEIGHT) {
+            tile := level.grid[x][y]
             if tile == Tile.NONE {
                 continue
             }
@@ -70,7 +93,7 @@ level_refresh :: proc(level: ^Level) {
                     TILE_WIDTH / TILE_SCALE,
                     TILE_HEIGHT / TILE_SCALE,
                 },
-                f32(y * TILE_SIZE),
+                f32(y * TILE_SIZE) - (tile == Tile.FLOOR ? 0.2 : 0),
                 u32(len(gs.render_queue)),
             }
             append(&gs.render_queue, el)
