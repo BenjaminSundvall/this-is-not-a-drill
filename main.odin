@@ -235,7 +235,7 @@ main :: proc() {
     // Test scientist
     body = b2.DefaultBodyDef()
     body.type = b2.BodyType.dynamicBody
-    body.position = {0, 0}
+    body.position = {5, 5}
     body.linearDamping = 20.0
 
     body_id = b2.CreateBody(world, body)
@@ -248,9 +248,6 @@ main :: proc() {
         texture = rl.LoadTexture("resources/player.png"),
         speed = 5,
     }
-    append(&gs.scientist.path, b2.Body_GetPosition(gs.scientist.id))
-    append(&gs.scientist.path, [2]f32{4, -2})
-    append(&gs.scientist.path, [2]f32{4, 6})
     defer delete(gs.scientist.path)
 
     for !rl.WindowShouldClose() {
@@ -282,13 +279,21 @@ main :: proc() {
                 gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
             gs.camera.target.y = math.clamp(pos.y,
                 gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+
             if gs.camera_shake {
                 gs.camera.target.x += shake_x
                 gs.camera.target.y += shake_y
             }
-                
             if rl.IsKeyPressed(.SPACE) {
                 level_interact(&gs.level, pos)
+            }
+
+            if rl.IsKeyPressed(.P) {
+                path_to(&gs.scientist, {4, 6})
+            }
+
+            if rl.IsKeyPressed(.O) {
+                path_to(&gs.scientist, {10, 10})
             }
         }
 
