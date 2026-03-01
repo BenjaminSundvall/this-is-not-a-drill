@@ -36,7 +36,7 @@ handle_input :: proc() -> [2]f32 {
     return input
 }
 
-render_el_cmd :: proc(a, b: RenderElement) -> int {
+render_el_cmp :: proc(a, b: RenderElement) -> int {
     if a.z == b.z {
         return 0
     }
@@ -59,7 +59,7 @@ draw_path :: proc(scientist: Scientist) {
 }
 
 draw_cam :: proc() {
-    sort.quick_sort_proc(gs.render_queue[:], render_el_cmd)
+    sort.quick_sort_proc(gs.render_queue[:], render_el_cmp)
 
     for el in gs.render_queue {
         rl.DrawTexturePro(el.texture^, el.src, el.dest,
