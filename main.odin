@@ -245,7 +245,7 @@ main :: proc() {
 
     gs.scientist = {
         id = body_id,
-        texture = rl.LoadTexture("resources/player.png"),
+        texture = rl.LoadTexture("resources/scientist.png"),
         speed = 5,
     }
     defer delete(gs.scientist.path)
