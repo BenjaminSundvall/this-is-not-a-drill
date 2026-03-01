@@ -32,13 +32,13 @@ follow_path :: proc(scientist: ^Scientist) {
 import "core:math"
 
 get_tile_type :: proc(pos: [2]int) -> Tile {
-    return gs.level.grid[pos.x][pos.y]
+    return gs.level.grid[pos.x][pos.y - 1]
 }
 
 is_walkable :: proc(pos: [2]int) -> bool {
     grid_width := len(gs.level.grid)
     grid_height := len(gs.level.grid[0])
-    if pos.x < 0 || pos.x >= grid_width || pos.y < 0 || pos.y >= grid_height {
+    if pos.x < 0 || pos.x >= grid_width || pos.y <= 0 || pos.y >= grid_height {
         return false
     }
 
