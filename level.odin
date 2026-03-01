@@ -55,6 +55,8 @@ Tile :: enum u32 {
     PORTAL3_RIGHT = 43,
     PORTAL4_LEFT = 44,
     PORTAL4_RIGHT = 45,
+    TRASHCAN = 46,
+    TRASHBAG = 47,
     NONE = 0xffffffff,
 }
 
@@ -79,12 +81,18 @@ Portal :: struct {
     left: bool,
 }
 
+Trashbag :: struct {
+    carried: bool,
+}
+Trashcan :: struct {}
+
 InteractableState :: union {
-    Door, Keypad, Portal,
+    Door, Keypad, Portal, Trashbag, Trashcan,
 } 
 
 Interactable :: struct {
     body: b2.BodyId,
+    enabled: bool,
     state : InteractableState,
 }
 
@@ -121,8 +129,31 @@ load_level :: proc() -> Level {
     return level
 }
 
+clear_task :: proc(desc: cstring) {
+    for &task in gs.tasks {
+        if task.description == desc {
+            task.completed = true
+        }
+    }
+}
+
 interact_with :: proc(item: ^Interactable) {
     switch &v in item.state {
+    case Trashcan:
+        for ix in 0..<len(&gs.level.iteractables) {
+            #partial switch &v in gs.level.iteractables[ix].state {
+            case Trashbag:
+                if v.carried == true {
+                    unordered_remove(&gs.level.iteractables, ix)
+                    clear_task("Throw away the trash")
+                    break
+                }
+            }
+        }
+    case Trashbag: {
+        v.carried = true
+        item.enabled = false
+    }
     case Portal:
         completed := 0
         for &t in gs.tasks {
@@ -133,19 +164,11 @@ interact_with :: proc(item: ^Interactable) {
         if completed + 1 < len(gs.tasks) {
             return
         }
-        for &task in gs.tasks {
-            if task.description == "Get out!" {
-                task.completed = true
-            }
-        }
+        clear_task("Get out!")
         gs.game_over = true
     case Keypad:
         v.locked = true
-        for &task in gs.tasks {
-            if task.description == "Lock the lab" {
-                task.completed = true
-            }
-        }
+        clear_task("Lock the lab")
     case Door:
         if v.state == DoorState.OPEN {
             v.state = DoorState.CLOSING1
@@ -165,6 +188,9 @@ level_interact :: proc(level: ^Level, pos: [2]f32) {
     min_dist: f32 = 1000000000
 
     for &i in level.iteractables {
+        if !i.enabled {
+            continue
+        }
         bpos := b2.Body_GetPosition(i.body)
 
         dist := b2.Distance(pos, bpos)
@@ -185,6 +211,9 @@ level_tick :: proc(level: ^Level) {
     for &i in level.iteractables {
         switch &v in i.state {
         case Portal:
+        case Keypad:
+        case Trashbag:
+        case Trashcan:
         case Door:
             if v.state != DoorState.OPEN && 
                 v.state != DoorState.CLOSED {
@@ -206,8 +235,6 @@ level_tick :: proc(level: ^Level) {
                                         u32(ratio * 3))
                 }
             }
-        case Keypad:
-            continue
         }
     }
 }
@@ -225,21 +252,27 @@ level_refresh :: proc(level: ^Level) {
             px := f32(x * TILE_SIZE) + TILE_SIZE / 2.0
             py := TILE_SIZE + TILE_SIZE / 2.0 + f32(y * TILE_SIZE)
 
-            i: Interactable = {}
+            i: Interactable = {enabled = true}
 
             box: b2.Polygon
             body_def.position = {px, py}
             box = b2.MakeSquare(TILE_SIZE / 2.0)
-            if (tile == Tile.PORTAL1_LEFT || tile == Tile.PORTAL1_RIGHT) {
+            if tile == Tile.TRASHBAG {
+                i.state = Trashbag({false})
+                level.grid[x][y] = Tile.FLOOR
+            } else if tile == Tile.TRASHCAN {
+                i.state = Trashcan({})
+                level.grid[x][y] = Tile.FLOOR
+            } else if tile == Tile.PORTAL1_LEFT || tile == Tile.PORTAL1_RIGHT {
                 i.state = Portal({tile == Tile.PORTAL1_LEFT})
                 level.grid[x][y] = Tile.FLOOR
-            } else if (tile == Tile.KEYPAD_LOCKED || tile == Tile.KEYPAD_UNLOCKED) {
+            } else if tile == Tile.KEYPAD_LOCKED || tile == Tile.KEYPAD_UNLOCKED {
                 i.state = Keypad({tile == Tile.KEYPAD_LOCKED})
                 level.grid[x][y] = Tile.WALL1
-            } else if (tile == Tile.DOOR_H_CLOSED) {
+            } else if tile == Tile.DOOR_H_CLOSED {
                 i.state = Door({DoorState.CLOSED, false, 0.0})
                 level.grid[x][y] = Tile.FLOOR
-            } else if (tile == Tile.DOOR_V_CLOSED) {
+            } else if tile == Tile.DOOR_V_CLOSED {
                 i.state = Door({DoorState.CLOSED, true, 0.0})
                 body_def.position = {px, py}
                 box = b2.MakeBox(TILE_SIZE / 5.0, TILE_SIZE / 2.0)
@@ -282,11 +315,22 @@ level_draw :: proc(level: ^Level) {
     }
     for &i in level.iteractables {
         pos := b2.Body_GetPosition(i.body)
-        x := u32(pos.x - TILE_SIZE / 2.0) / TILE_SIZE
-        y := u32(pos.y - TILE_SIZE - TILE_SIZE / 2.0) / TILE_SIZE
+        x := f32(u32(pos.x - TILE_SIZE / 2.0) / TILE_SIZE)
+        y := f32(u32(pos.y - TILE_SIZE - TILE_SIZE / 2.0) / TILE_SIZE)
+        z := y * TILE_SIZE + 0.05
 
         tile: Tile = Tile.NONE
-        switch v in i.state {
+        switch &v in i.state {
+        case Trashbag:
+            tile = Tile.TRASHBAG
+            if v.carried {
+                p := b2.Body_GetPosition(gs.player.id)
+                x = p.x
+                y = p.y -  TILE_SIZE * 1.5
+                z = 9999
+            }
+        case Trashcan:
+            tile = Tile.TRASHCAN
         case Portal:
             time := u64(rl.GetTime() * 2) % 4
             tiles: [4]Tile = {Tile.PORTAL1_LEFT, 
@@ -333,12 +377,12 @@ level_draw :: proc(level: ^Level) {
             &level.tiles,
             tile_rect(tile),
             {
-                f32(x * TILE_SIZE),
-                f32((y * TILE_SIZE)),
+                x * TILE_SIZE,
+                (y * TILE_SIZE),
                 TILE_WIDTH / TILE_SCALE,
                 TILE_HEIGHT / TILE_SCALE,
             },
-            f32(y * TILE_SIZE) + 0.05,
+            z,
         }
         append(&gs.render_queue, el)
 

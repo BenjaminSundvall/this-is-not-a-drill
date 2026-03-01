@@ -227,6 +227,7 @@ main :: proc() {
 
     append(&gs.tasks, Task{description="Save the scientists (3/3)", completed=true})
     append(&gs.tasks, Task{description="Lock the lab"})
+    append(&gs.tasks, Task{description="Throw away the trash"})
     append(&gs.tasks, Task{description="Get out!"})
     defer delete(gs.tasks)
 
