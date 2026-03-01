@@ -94,7 +94,7 @@ draw_ui :: proc() {
 
 draw_game :: proc() {
     rl.BeginDrawing()
-    rl.ClearBackground({160, 200, 255, 255})
+    rl.ClearBackground({178, 167, 149, 255})
 
     resize(&gs.render_queue, 0)
     level_draw(&gs.level)
@@ -157,7 +157,7 @@ main :: proc() {
 
     body := b2.DefaultBodyDef()
     body.type = b2.BodyType.dynamicBody
-    body.position = {0, 0}
+    body.position = {5, 6}
     body.linearDamping = 20.0
 
     body_id := b2.CreateBody(world, body)
@@ -226,6 +226,7 @@ main :: proc() {
     gs.checkbox_ok_texture = rl.LoadTexture("resources/checkbox_ok.png")
 
     append(&gs.tasks, Task{description="Save the scientists (3/3)", completed=true})
+    append(&gs.tasks, Task{description="Lock the lab"})
     append(&gs.tasks, Task{description="Get out!"})
     defer delete(gs.tasks)
 

@@ -4,7 +4,7 @@ import "core:fmt"
 import "base:intrinsics"
 import rl "vendor:raylib"
 
-TILE_COUNT :: 38
+TILE_COUNT :: 46
 
 TILE_SIZE :: 16
 TILE_WIDTH :: 16
@@ -51,7 +51,7 @@ main :: proc() {
     selected_tile: u32 = 0
 
     for !rl.WindowShouldClose() {
-        if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+        if rl.IsMouseButtonDown(rl.MouseButton.LEFT) {
             mx, my: i32 = rl.GetMouseX(), rl.GetMouseY()
 
             tx: i32 = ((mx - i32(offset.x)) / (TILE_SIZE * TILE_SCALE)) 
@@ -61,7 +61,7 @@ main :: proc() {
                 fmt.printfln("%d, %d", tx, ty)
             }
         }
-        if rl.IsMouseButtonPressed(rl.MouseButton.RIGHT) {
+        if rl.IsMouseButtonDown(rl.MouseButton.RIGHT) {
             mx, my: i32 = rl.GetMouseX(), rl.GetMouseY()
 
             tx: i32 = ((mx - i32(offset.x)) / (TILE_SIZE * TILE_SCALE))

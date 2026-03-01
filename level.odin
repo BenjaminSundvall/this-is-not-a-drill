@@ -47,6 +47,14 @@ Tile :: enum u32 {
     LAB_TABLE_6 = 35,
     LAB_TABLE_7 = 36,
     LAB_TABLE_8 = 37,
+    PORTAL1_LEFT = 38,
+    PORTAL1_RIGHT = 39,
+    PORTAL2_LEFT = 40,
+    PORTAL2_RIGHT = 41,
+    PORTAL3_LEFT = 42,
+    PORTAL3_RIGHT = 43,
+    PORTAL4_LEFT = 44,
+    PORTAL4_RIGHT = 45,
     NONE = 0xffffffff,
 }
 
@@ -67,8 +75,12 @@ Keypad :: struct {
     locked: bool,
 }
 
+Portal :: struct {
+    left: bool,
+}
+
 InteractableState :: union {
-    Door, Keypad,
+    Door, Keypad, Portal,
 } 
 
 Interactable :: struct {
@@ -111,8 +123,29 @@ load_level :: proc() -> Level {
 
 interact_with :: proc(item: ^Interactable) {
     switch &v in item.state {
+    case Portal:
+        completed := 0
+        for &t in gs.tasks {
+            if t.completed {
+                completed += 1
+            }
+        }
+        if completed + 1 < len(gs.tasks) {
+            return
+        }
+        for &task in gs.tasks {
+            if task.description == "Get out!" {
+                task.completed = true
+            }
+        }
+        gs.game_over = true
     case Keypad:
         v.locked = true
+        for &task in gs.tasks {
+            if task.description == "Lock the lab" {
+                task.completed = true
+            }
+        }
     case Door:
         if v.state == DoorState.OPEN {
             v.state = DoorState.CLOSING1
@@ -151,6 +184,7 @@ level_interact :: proc(level: ^Level, pos: [2]f32) {
 level_tick :: proc(level: ^Level) {
     for &i in level.iteractables {
         switch &v in i.state {
+        case Portal:
         case Door:
             if v.state != DoorState.OPEN && 
                 v.state != DoorState.CLOSED {
@@ -173,7 +207,7 @@ level_tick :: proc(level: ^Level) {
                 }
             }
         case Keypad:
-            return
+            continue
         }
     }
 }
@@ -196,7 +230,10 @@ level_refresh :: proc(level: ^Level) {
             box: b2.Polygon
             body_def.position = {px, py}
             box = b2.MakeSquare(TILE_SIZE / 2.0)
-            if (tile == Tile.KEYPAD_LOCKED || tile == Tile.KEYPAD_UNLOCKED) {
+            if (tile == Tile.PORTAL1_LEFT || tile == Tile.PORTAL1_RIGHT) {
+                i.state = Portal({tile == Tile.PORTAL1_LEFT})
+                level.grid[x][y] = Tile.FLOOR
+            } else if (tile == Tile.KEYPAD_LOCKED || tile == Tile.KEYPAD_UNLOCKED) {
                 i.state = Keypad({tile == Tile.KEYPAD_LOCKED})
                 level.grid[x][y] = Tile.WALL1
             } else if (tile == Tile.DOOR_H_CLOSED) {
@@ -250,6 +287,13 @@ level_draw :: proc(level: ^Level) {
 
         tile: Tile = Tile.NONE
         switch v in i.state {
+        case Portal:
+            time := u64(rl.GetTime() * 2) % 4
+            tiles: [4]Tile = {Tile.PORTAL1_LEFT, 
+                              Tile.PORTAL2_LEFT,
+                              Tile.PORTAL3_LEFT,
+                              Tile.PORTAL4_LEFT}
+            tile = Tile(u32(tiles[time]) + (v.left ? 0 : 1))
         case Keypad:
             tile = v.locked ? Tile.KEYPAD_LOCKED : Tile.KEYPAD_UNLOCKED
         case Door:
