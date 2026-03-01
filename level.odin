@@ -57,6 +57,8 @@ Tile :: enum u32 {
     PORTAL4_RIGHT = 45,
     TRASHCAN = 46,
     TRASHBAG = 47,
+    BUTTON = 48,
+    BUTTON_PRESSED = 49,
     NONE = 0xffffffff,
 }
 
@@ -85,9 +87,12 @@ Trashbag :: struct {
     carried: bool,
 }
 Trashcan :: struct {}
+Button :: struct {
+    shake_end: f64,
+}
 
 InteractableState :: union {
-    Door, Keypad, Portal, Trashbag, Trashcan,
+    Door, Keypad, Portal, Trashbag, Trashcan, Button,
 } 
 
 Interactable :: struct {
@@ -139,6 +144,11 @@ clear_task :: proc(desc: cstring) {
 
 interact_with :: proc(item: ^Interactable) {
     switch &v in item.state {
+    case Button:
+        item.enabled = false
+        gs.camera_shake = true
+        v.shake_end = rl.GetTime() + 2.5
+        clear_task("Press the red button")
     case Trashcan:
         for ix in 0..<len(&gs.level.iteractables) {
             #partial switch &v in gs.level.iteractables[ix].state {
@@ -214,6 +224,10 @@ level_tick :: proc(level: ^Level) {
         case Keypad:
         case Trashbag:
         case Trashcan:
+        case Button:
+            if rl.GetTime() >= v.shake_end {
+                gs.camera_shake = false
+            }
         case Door:
             if v.state != DoorState.OPEN && 
                 v.state != DoorState.CLOSED {
@@ -257,7 +271,10 @@ level_refresh :: proc(level: ^Level) {
             box: b2.Polygon
             body_def.position = {px, py}
             box = b2.MakeSquare(TILE_SIZE / 2.0)
-            if tile == Tile.TRASHBAG {
+            if tile == Tile.BUTTON {
+                i.state = Button({})
+                level.grid[x][y] = Tile.FLOOR
+            } else if tile == Tile.TRASHBAG {
                 i.state = Trashbag({false})
                 level.grid[x][y] = Tile.FLOOR
             } else if tile == Tile.TRASHCAN {
@@ -321,6 +338,8 @@ level_draw :: proc(level: ^Level) {
 
         tile: Tile = Tile.NONE
         switch &v in i.state {
+        case Button:
+            tile = i.enabled ? Tile.BUTTON : Tile.BUTTON_PRESSED
         case Trashbag:
             tile = Tile.TRASHBAG
             if v.carried {

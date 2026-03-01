@@ -228,6 +228,7 @@ main :: proc() {
     append(&gs.tasks, Task{description="Save the scientists (3/3)", completed=true})
     append(&gs.tasks, Task{description="Lock the lab"})
     append(&gs.tasks, Task{description="Throw away the trash"})
+    append(&gs.tasks, Task{description="Press the red button"})
     append(&gs.tasks, Task{description="Get out!"})
     defer delete(gs.tasks)
 
@@ -274,11 +275,17 @@ main :: proc() {
             if gs.time_left <= 0 {
                 game_over()
             }
+            shake_x := f32(rl.GetRandomValue(0, 100)) / 200.0 - 0.25
+            shake_y := f32(rl.GetRandomValue(0, 100)) / 200.0 - 0.25
             pos := b2.Body_GetPosition(gs.player.id)
             gs.camera.target.x = math.clamp(pos.x,
                 gs.cam_boundary_tl.x, gs.cam_boundary_br.x)
             gs.camera.target.y = math.clamp(pos.y,
                 gs.cam_boundary_tl.y, gs.cam_boundary_br.y)
+            if gs.camera_shake {
+                gs.camera.target.x += shake_x
+                gs.camera.target.y += shake_y
+            }
                 
             if rl.IsKeyPressed(.SPACE) {
                 level_interact(&gs.level, pos)

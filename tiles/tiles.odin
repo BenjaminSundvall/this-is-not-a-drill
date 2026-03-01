@@ -4,7 +4,7 @@ import "core:fmt"
 import "base:intrinsics"
 import rl "vendor:raylib"
 
-TILE_COUNT :: 48
+TILE_COUNT :: 50
 
 TILE_SIZE :: 16
 TILE_WIDTH :: 16

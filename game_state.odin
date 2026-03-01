@@ -20,6 +20,7 @@ GameState :: struct {
     camera: rl.Camera2D,
     time_limit: f64,
     time_left: f64,
+    camera_shake: bool,
     cam_boundary_tl: [2]f32,
     cam_boundary_br: [2]f32,
     tasks: [dynamic]Task,
