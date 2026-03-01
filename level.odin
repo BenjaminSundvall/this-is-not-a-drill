@@ -22,11 +22,32 @@ Tile :: enum u32 {
     DOOR_V_OPENING3 = 10,
     DOOR_H_OPEN = 11,
     DOOR_V_OPEN = 12,
+    SERVER_LEFT = 13,
+    SERVER_RIGHT = 14,
+    TANK1_LEFT = 15,
+    TANK1_RIGHT = 16,
+    TANK2_LEFT = 17,
+    TANK2_RIGHT = 18,
+    TANK3_LEFT = 19,
+    TANK3_RIGHT = 20,
+    SERVER = 21,
+    LAB_TEXT_L = 22,
+    LAB_TEXT_A = 23,
+    LAB_TEXT_B = 24,
+    LAB_TEXT_ARROW = 25,
+    LAB_DOOR = 26,
+    LAB_FLOOR = 27,
+    KEYPAD_LOCKED = 28,
+    KEYPAD_UNLOCKED = 29,
+    LAB_TABLE_1 = 30,
+    LAB_TABLE_2 = 31,
+    LAB_TABLE_3 = 32,
+    LAB_TABLE_4 = 33,
+    LAB_TABLE_5 = 34,
+    LAB_TABLE_6 = 35,
+    LAB_TABLE_7 = 36,
+    LAB_TABLE_8 = 37,
     NONE = 0xffffffff,
-}
-
-InteractType :: enum {
-    DOOR,
 }
 
 DoorState :: enum u32 {
@@ -42,8 +63,12 @@ Door :: struct {
     state_change_time: f64,
 }
 
+Keypad :: struct {
+    locked: bool,
+}
+
 InteractableState :: union {
-    Door,
+    Door, Keypad,
 } 
 
 Interactable :: struct {
@@ -86,6 +111,8 @@ load_level :: proc() -> Level {
 
 interact_with :: proc(item: ^Interactable) {
     switch &v in item.state {
+    case Keypad:
+        v.locked = true
     case Door:
         if v.state == DoorState.OPEN {
             v.state = DoorState.CLOSING1
@@ -145,6 +172,8 @@ level_tick :: proc(level: ^Level) {
                                         u32(ratio * 3))
                 }
             }
+        case Keypad:
+            return
         }
     }
 }
@@ -165,19 +194,19 @@ level_refresh :: proc(level: ^Level) {
             i: Interactable = {}
 
             box: b2.Polygon
-            if (tile == Tile.DOOR_H_CLOSED) {
+            body_def.position = {px, py}
+            box = b2.MakeSquare(TILE_SIZE / 2.0)
+            if (tile == Tile.KEYPAD_LOCKED || tile == Tile.KEYPAD_UNLOCKED) {
+                i.state = Keypad({tile == Tile.KEYPAD_LOCKED})
+                level.grid[x][y] = Tile.WALL1
+            } else if (tile == Tile.DOOR_H_CLOSED) {
                 i.state = Door({DoorState.CLOSED, false, 0.0})
-                body_def.position = {px, py}
-                box = b2.MakeSquare(TILE_SIZE / 2.0)
                 level.grid[x][y] = Tile.FLOOR
             } else if (tile == Tile.DOOR_V_CLOSED) {
                 i.state = Door({DoorState.CLOSED, true, 0.0})
                 body_def.position = {px, py}
                 box = b2.MakeBox(TILE_SIZE / 5.0, TILE_SIZE / 2.0)
                 level.grid[x][y] = Tile.FLOOR
-            } else {
-                body_def.position = {px, py}
-                box = b2.MakeSquare(TILE_SIZE / 2.0)
             }
             body := b2.CreateBody(gs.world, body_def)
 
@@ -210,7 +239,6 @@ level_draw :: proc(level: ^Level) {
                     TILE_HEIGHT / TILE_SCALE,
                 },
                 f32(y * TILE_SIZE) - (tile == Tile.FLOOR ? 0.2 : 0),
-                u32(len(gs.render_queue)),
             }
             append(&gs.render_queue, el)
         }
@@ -220,9 +248,11 @@ level_draw :: proc(level: ^Level) {
         x := u32(pos.x - TILE_SIZE / 2.0) / TILE_SIZE
         y := u32(pos.y - TILE_SIZE - TILE_SIZE / 2.0) / TILE_SIZE
 
+        tile: Tile = Tile.NONE
         switch v in i.state {
+        case Keypad:
+            tile = v.locked ? Tile.KEYPAD_LOCKED : Tile.KEYPAD_UNLOCKED
         case Door:
-            tile: Tile
             switch v.state {
             case DoorState.OPEN:
                 tile = v.vertical ? Tile.DOOR_V_OPEN :
@@ -250,20 +280,24 @@ level_draw :: proc(level: ^Level) {
                                     Tile.DOOR_H_OPENING1
             }
             
-            el: RenderElement = {
-                &level.tiles,
-                tile_rect(tile),
-                {
-                    f32(x * TILE_SIZE),
-                    f32((y * TILE_SIZE)),
-                    TILE_WIDTH / TILE_SCALE,
-                    TILE_HEIGHT / TILE_SCALE,
-                },
-                f32(y * TILE_SIZE) - (tile == Tile.FLOOR ? 0.2 : 0),
-                u32(len(gs.render_queue)),
-            }
-            append(&gs.render_queue, el)
         }
+        if tile == Tile.NONE {
+            continue
+        }
+
+        el: RenderElement = {
+            &level.tiles,
+            tile_rect(tile),
+            {
+                f32(x * TILE_SIZE),
+                f32((y * TILE_SIZE)),
+                TILE_WIDTH / TILE_SCALE,
+                TILE_HEIGHT / TILE_SCALE,
+            },
+            f32(y * TILE_SIZE) + 0.05,
+        }
+        append(&gs.render_queue, el)
+
     }
 }
 

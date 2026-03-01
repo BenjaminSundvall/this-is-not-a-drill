@@ -109,7 +109,6 @@ draw_game :: proc() {
          1.0, 2.0,
         },
         pos.y - 0.65,
-        u32(len(gs.render_queue)),
     }
     append(&gs.render_queue, el)
 
@@ -123,7 +122,6 @@ draw_game :: proc() {
          1.0, 2.0,
         },
         pos.y - 0.65,
-        u32(len(gs.render_queue)),
     }
     append(&gs.render_queue, el)
 
@@ -206,7 +204,7 @@ main :: proc() {
 
     gs.player = {
         id = body_id,
-        texture = rl.LoadTexture("resources/player.png"),
+        texture = rl.LoadTexture("resources/security_guard.png"),
         speed = 10,
     }
 

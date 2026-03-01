@@ -8,7 +8,6 @@ RenderElement :: struct {
     src: rl.Rectangle,
     dest: rl.Rectangle,
     z: f32,
-    ix: u32,
 }
 
 GameState :: struct {

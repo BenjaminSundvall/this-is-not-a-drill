@@ -4,6 +4,8 @@ import "core:fmt"
 import "base:intrinsics"
 import rl "vendor:raylib"
 
+TILE_COUNT :: 38
+
 TILE_SIZE :: 16
 TILE_WIDTH :: 16
 TILE_HEIGHT :: 32
@@ -23,6 +25,8 @@ main :: proc() {
     rl.InitWindow(1280, 720, "this is not a drill")
     tiles := rl.LoadTexture("resources/tilemap.png")
     rl.SetTextureFilter(tiles, rl.TextureFilter.POINT)
+
+    rl.SetTargetFPS(60)
 
 
     grid: [WORLD_WIDTH][WORLD_HEIGHT]u32
@@ -105,10 +109,17 @@ main :: proc() {
         }
 
         wheel_delta: f32 = rl.GetMouseWheelMove()
-        if wheel_delta < 0.0 && selected_tile < 8 - 1 {
+        if wheel_delta < 0.0 {
             selected_tile += 1
-        } else if wheel_delta > 0.0 && selected_tile > 0 {
-            selected_tile -= 1
+            if selected_tile >= TILE_COUNT {
+                selected_tile -= TILE_COUNT
+            }
+        } else if wheel_delta > 0.0 {
+            if selected_tile == 0 {
+                selected_tile = TILE_COUNT - 1
+            } else {
+                selected_tile -= 1
+            }
         }
 
         rl.BeginDrawing()
@@ -140,13 +151,15 @@ main :: proc() {
             }
         }
 
-        for tile_ix in u32(0)..<u32(8) {
+        offset_y := i32(selected_tile / 5) * TILE_HEIGHT * 4 * 5
+
+        for tile_ix in u32(0)..<u32(TILE_COUNT) {
             color: rl.Color = tile_ix % 2 == 0 ? rl.GRAY : rl.WHITE
             if tile_ix == selected_tile {
                 color = rl.GREEN
             }
             rl.DrawRectangle(1280 - TILE_SIZE * 4 - 16,
-                         i32(tile_ix) * TILE_HEIGHT * 4,
+                         i32(tile_ix) * TILE_HEIGHT * 4 - offset_y,
                          TILE_SIZE * 4 + 16, TILE_HEIGHT * 4,
                          color)
             rl.DrawTexturePro(
@@ -154,7 +167,7 @@ main :: proc() {
                 tile_rect(tile_ix),
                 {
                     f32(1280 - TILE_SIZE * 4),
-                    f32((tile_ix * TILE_HEIGHT) * u32(4)),
+                    f32((tile_ix * TILE_HEIGHT) * u32(4) - u32(offset_y)),
                     f32(TILE_WIDTH * 4),
                     f32(TILE_HEIGHT * 4),
                 },
