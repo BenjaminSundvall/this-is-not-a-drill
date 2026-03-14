@@ -7,4 +7,5 @@ Player :: struct {
     id: b2.BodyId,
     texture: rl.Texture2D,
     speed: f32,
+    direction: i32,
 }
